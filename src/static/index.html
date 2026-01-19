@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
     <div class="container">
         <!-- Header -->
@@ -39,7 +41,7 @@
                 <div class="card">
                     <h2><i class="fas fa-user-plus"></i> Register New User</h2>
                     <p class="subtitle">Register yourself in the biometric system</p>
-                    
+
                     <div class="form-group">
                         <label for="user-name">Your Name</label>
                         <input type="text" id="user-name" placeholder="Enter your full name" required>
@@ -179,148 +181,195 @@
                         <i class="fas fa-search"></i>
                         <input type="text" id="search-users" placeholder="Search users...">
                     </div>
-
+                </div>
+            </div>
 
             <!-- Metrics View -->
             <div id="metrics-view" class="view">
-                <div class="card">
-                    <h2><i class="fas fa-chart-line"></i> System Performance Metrics</h2>
-                    <p class="subtitle">Essential biometric effectiveness indicators</p>
-
+                <div class="metrics-header">
+                    <div>
+                        <h2><i class="fas fa-chart-line"></i> System Performance Metrics</h2>
+                        <p class="subtitle">Real-time biometric system performance indicators</p>
+                    </div>
                     <div class="metrics-controls">
                         <button id="refresh-metrics" class="btn btn-primary">
-                            <i class="fas fa-sync-alt"></i> Refresh Metrics
+                            <i class="fas fa-sync-alt"></i> Refresh
                         </button>
                         <button id="export-metrics" class="btn btn-secondary">
-                            <i class="fas fa-download"></i> Export Data
+                            <i class="fas fa-download"></i> Export
                         </button>
                     </div>
+                </div>
 
-                    <!-- Key Performance Indicators -->
-                    <div class="kpi-container">
-                        <div class="kpi-card">
-                            <i class="fas fa-check-circle"></i>
-                            <div class="kpi-value" id="kpi-accuracy">-</div>
-                            <div class="kpi-label">Accuracy</div>
+                <!-- Key Performance Indicators -->
+                <div class="metric-panels">
+                    <div class="metric-panel">
+                        <div class="metric-panel-header">
+                            <h3><i class="fas fa-bullseye"></i> Accuracy</h3>
                         </div>
-                        <div class="kpi-card">
-                            <i class="fas fa-user-check"></i>
-                            <div class="kpi-value" id="kpi-far">-</div>
-                            <div class="kpi-label">FAR</div>
-                            <div class="kpi-description">False Acceptance Rate</div>
-                        </div>
-                        <div class="kpi-card">
-                            <i class="fas fa-user-times"></i>
-                            <div class="kpi-value" id="kpi-frr">-</div>
-                            <div class="kpi-label">FRR</div>
-                            <div class="kpi-description">False Rejection Rate</div>
-                        </div>
-                        <div class="kpi-card">
-                            <i class="fas fa-balance-scale"></i>
-                            <div class="kpi-value" id="kpi-eer">-</div>
-                            <div class="kpi-label">EER</div>
-                            <div class="kpi-description">Equal Error Rate</div>
+                        <div class="metric-panel-body">
+                            <div class="metric-value-large" id="kpi-accuracy">--</div>
+                            <div class="metric-description">Overall system accuracy</div>
                         </div>
                     </div>
 
-                    <!-- Charts Grid -->
-                    <div class="charts-grid">
-                        <!-- ROC Curve -->
-                        <div class="chart-card">
-                            <h3><i class="fas fa-chart-area"></i> ROC Curve</h3>
-                            <p class="chart-description">Receiver Operating Characteristic - Trade-off between True Positive Rate and False Positive Rate</p>
-                            <div class="chart-container">
-                                <canvas id="roc-chart"></canvas>
-                            </div>
-                            <div class="chart-info" id="roc-info"></div>
+                    <div class="metric-panel">
+                        <div class="metric-panel-header">
+                            <h3><i class="fas fa-user-check"></i> FAR</h3>
                         </div>
+                        <div class="metric-panel-body">
+                            <div class="metric-value-large" id="kpi-far">--</div>
+                            <div class="metric-description">False Acceptance Rate</div>
+                        </div>
+                    </div>
 
-                        <!-- DET Curve -->
-                        <div class="chart-card">
+                    <div class="metric-panel">
+                        <div class="metric-panel-header">
+                            <h3><i class="fas fa-user-times"></i> FRR</h3>
+                        </div>
+                        <div class="metric-panel-body">
+                            <div class="metric-value-large" id="kpi-frr">--</div>
+                            <div class="metric-description">False Rejection Rate</div>
+                        </div>
+                    </div>
+
+                    <div class="metric-panel">
+                        <div class="metric-panel-header">
+                            <h3><i class="fas fa-balance-scale"></i> EER</h3>
+                        </div>
+                        <div class="metric-panel-body">
+                            <div class="metric-value-large" id="kpi-eer">--</div>
+                            <div class="metric-description">Equal Error Rate</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="metric-panel full-width">
+                    <div class="metric-panel-header">
+                        <h3><i class="fas fa-chart-area"></i> ROC Curve</h3>
+                    </div>
+                    <div class="metric-panel-body">
+                        <p class="chart-subtitle">Receiver Operating Characteristic - Trade-off between TPR and
+                            FPR</p>
+                        <div class="chart-container">
+                            <canvas id="roc-chart"></canvas>
+                        </div>
+                        <div id="roc-info" class="metric-info"></div>
+                    </div>
+                </div>
+
+                <div class="metric-panels-row">
+                    <div class="metric-panel">
+                        <div class="metric-panel-header">
                             <h3><i class="fas fa-project-diagram"></i> DET Curve</h3>
-                            <p class="chart-description">Detection Error Tradeoff - FAR vs FRR on logarithmic scale</p>
+                        </div>
+                        <div class="metric-panel-body">
+                            <p class="chart-subtitle">Detection Error Tradeoff</p>
                             <div class="chart-container">
                                 <canvas id="det-chart"></canvas>
                             </div>
-                            <div class="chart-info" id="det-info"></div>
+                            <div id="det-info" class="metric-info"></div>
                         </div>
+                    </div>
 
-                        <!-- CMC Curve -->
-                        <div class="chart-card">
+                    <div class="metric-panel">
+                        <div class="metric-panel-header">
                             <h3><i class="fas fa-layer-group"></i> CMC Curve</h3>
-                            <p class="chart-description">Cumulative Match Characteristic - Identification accuracy vs rank</p>
+                        </div>
+                        <div class="metric-panel-body">
+                            <p class="chart-subtitle">Cumulative Match Characteristic</p>
                             <div class="chart-container">
                                 <canvas id="cmc-chart"></canvas>
                             </div>
-                            <div class="chart-info" id="cmc-info"></div>
+                            <div id="cmc-info" class="metric-info"></div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Confusion Matrix -->
-                        <div class="chart-card">
+                <div class="metric-panels-row">
+                    <div class="metric-panel">
+                        <div class="metric-panel-header">
                             <h3><i class="fas fa-th"></i> Confusion Matrix</h3>
-                            <p class="chart-description">Classification performance breakdown</p>
+                        </div>
+                        <div class="metric-panel-body">
+                            <p class="chart-subtitle">Classification Performance</p>
                             <div class="chart-container">
                                 <canvas id="confusion-matrix-chart"></canvas>
                             </div>
-                            <div class="chart-info" id="confusion-info"></div>
+                            <div id="confusion-info" class="metric-info"></div>
                         </div>
+                    </div>
 
-                        <!-- Score Distribution -->
-                        <div class="chart-card">
+                    <div class="metric-panel">
+                        <div class="metric-panel-header">
                             <h3><i class="fas fa-chart-bar"></i> Score Distribution</h3>
-                            <p class="chart-description">Distribution of genuine vs impostor scores</p>
+                        </div>
+                        <div class="metric-panel-body">
+                            <p class="chart-subtitle">Genuine vs Impostor Scores</p>
                             <div class="chart-container">
                                 <canvas id="score-dist-chart"></canvas>
                             </div>
-                            <div class="chart-info" id="score-info"></div>
-                        </div>
-
-                        <!-- Anti-Spoofing Performance -->
-                        <div class="chart-card">
-                            <h3><i class="fas fa-shield-alt"></i> Anti-Spoofing Performance</h3>
-                            <p class="chart-description">Real vs Spoof detection accuracy</p>
-                            <div class="chart-container">
-                                <canvas id="antispoofing-chart"></canvas>
-                            </div>
-                            <div class="chart-info" id="antispoofing-info"></div>
+                            <div id="score-info" class="metric-info"></div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Additional Metrics Table -->
-                    <div class="metrics-table-container">
+                <div class="metric-panel full-width">
+                    <div class="metric-panel-header">
+                        <h3><i class="fas fa-shield-alt"></i> Anti-Spoofing Performance</h3>
+                    </div>
+                    <div class="metric-panel-body">
+                        <p class="chart-subtitle">Real vs Spoof detection accuracy</p>
+                        <div class="chart-container">
+                            <canvas id="antispoofing-chart"></canvas>
+                        </div>
+                        <div id="antispoofing-info" class="metric-info"></div>
+                    </div>
+                </div>
+
+                <!-- Detailed Metrics Table -->
+                <div class="metric-panel full-width">
+                    <div class="metric-panel-header">
                         <h3><i class="fas fa-table"></i> Detailed Metrics</h3>
-                        <table class="metrics-table" id="detailed-metrics-table">
-                            <thead>
-                                <tr>
-                                    <th>Metric</th>
-                                    <th>Value</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Populated by JavaScript -->
-                            </tbody>
-                        </table>
                     </div>
-
-                    <div id="metrics-status" class="result-box" style="display: none;"></div>
+                    <div class="metric-panel-body">
+                        <div class="metrics-table-wrapper">
+                            <table class="metrics-table" id="detailed-metrics-table">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Value</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
-                    <div id="users-list" class="users-list"></div>
-                </div>
-            </div>
-        </main>
 
-        <!-- Loading Overlay -->
-        <div id="loading-overlay" class="loading-overlay" style="display: none;">
-            <div class="spinner"></div>
-            <p id="loading-text">Processing...</p>
-        </div>
+                <div id="metrics-status" class="result-box" style="display: none;"></div>
+            </div>
 
-        <!-- Toast Notifications -->
-        <div id="toast-container" class="toast-container"></div>
+            <div id="users-list" class="users-list"></div>
+    </div>
+
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p id="loading-text">Processing...</p>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
     </div>
 
     <script src="/static/app.js"></script>
 </body>
+
 </html>

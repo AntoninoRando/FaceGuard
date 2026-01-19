@@ -4,10 +4,12 @@
 **/__pycache__/
 **/.vscode/
 
-**.mp4
-**.mov
+*.mp4
+*.mov
 
 antispoofing_feedback.json
+
+models/
 
 # --- Virtual environments ---
 .venv/

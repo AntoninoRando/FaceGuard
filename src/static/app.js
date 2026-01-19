@@ -977,22 +977,26 @@ function initializeMetricsView() {
 }
 
 async function loadMetrics() {
+    console.log('Loading metrics...');
     showLoading('Loading system metrics...');
     
     try {
         const response = await fetch(`${API_BASE_URL}/metrics`);
         const data = await response.json();
         
-        if (data.success) {
+        console.log('Metrics response:', data);
+        
+        if (data.success && data.metrics) {
             displayMetrics(data.metrics);
             showToast('Metrics loaded successfully', 'success');
         } else {
-            showToast('No metrics data available yet. Please run system evaluation first.', 'warning');
+            console.log('No metrics available, using demo data');
+            showToast('No metrics data available yet. Using demo data.', 'info');
             displayDemoMetrics();
         }
     } catch (error) {
         console.error('Metrics error:', error);
-        showToast('Using demo metrics data', 'info');
+        showToast('Error loading metrics. Using demo data.', 'info');
         displayDemoMetrics();
     } finally {
         hideLoading();
@@ -1000,29 +1004,66 @@ async function loadMetrics() {
 }
 
 function displayMetrics(metrics) {
-    // Update KPIs
+    console.log('Displaying metrics:', metrics);
+    
+    // Update KPIs with proper formatting
     document.getElementById('kpi-accuracy').textContent = 
         (metrics.accuracy * 100).toFixed(2) + '%';
     document.getElementById('kpi-far').textContent = 
-        (metrics.far * 100).toFixed(2) + '%';
+        (metrics.far * 100).toFixed(3) + '%';
     document.getElementById('kpi-frr').textContent = 
-        (metrics.frr * 100).toFixed(2) + '%';
+        (metrics.frr * 100).toFixed(3) + '%';
     document.getElementById('kpi-eer').textContent = 
-        (metrics.eer * 100).toFixed(2) + '%';
+        (metrics.eer * 100).toFixed(3) + '%';
     
-    // Create charts
-    createROCChart(metrics.roc_data);
-    createDETChart(metrics.det_data);
-    createCMCChart(metrics.cmc_data);
-    createConfusionMatrix(metrics.confusion_matrix);
-    createScoreDistribution(metrics.score_distribution);
-    createAntiSpoofingChart(metrics.antispoofing_data);
+    // Create charts with proper error handling
+    try {
+        if (metrics.roc_data) createROCChart(metrics.roc_data);
+    } catch (e) {
+        console.error('Error creating ROC chart:', e);
+    }
+    
+    try {
+        if (metrics.det_data) createDETChart(metrics.det_data);
+    } catch (e) {
+        console.error('Error creating DET chart:', e);
+    }
+    
+    try {
+        if (metrics.cmc_data) createCMCChart(metrics.cmc_data);
+    } catch (e) {
+        console.error('Error creating CMC chart:', e);
+    }
+    
+    try {
+        if (metrics.confusion_matrix) createConfusionMatrix(metrics.confusion_matrix);
+    } catch (e) {
+        console.error('Error creating confusion matrix:', e);
+    }
+    
+    try {
+        if (metrics.score_distribution) createScoreDistribution(metrics.score_distribution);
+    } catch (e) {
+        console.error('Error creating score distribution:', e);
+    }
+    
+    try {
+        if (metrics.antispoofing_data) createAntiSpoofingChart(metrics.antispoofing_data);
+    } catch (e) {
+        console.error('Error creating antispoofing chart:', e);
+    }
     
     // Populate detailed metrics table
-    populateMetricsTable(metrics.detailed_metrics);
+    try {
+        if (metrics.detailed_metrics) populateMetricsTable(metrics.detailed_metrics);
+    } catch (e) {
+        console.error('Error populating metrics table:', e);
+    }
 }
 
 function displayDemoMetrics() {
+    console.log('Displaying demo metrics...');
+    
     // Demo data for demonstration purposes
     const demoMetrics = {
         accuracy: 0.967,
@@ -1038,6 +1079,7 @@ function displayDemoMetrics() {
         detailed_metrics: generateDemoDetailedMetrics()
     };
     
+    console.log('Demo metrics data:', demoMetrics);
     displayMetrics(demoMetrics);
 }
 
