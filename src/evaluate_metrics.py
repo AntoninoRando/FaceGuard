@@ -1,5 +1,5 @@
 """
-Evaluation Script for Thermal Biometric System
+Evaluation Script for FaceGuard System
 Computes comprehensive metrics for system performance evaluation
 
 This script evaluates the biometric system and computes essential metrics:
@@ -363,7 +363,7 @@ def save_metrics_report(
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Evaluate Thermal Biometric System')
+    parser = argparse.ArgumentParser(description='Evaluate FaceGuard System')
     parser.add_argument('--gallery_path', type=str, default='data/initial_samples',
                        help='Path to gallery images')
     parser.add_argument('--test_path', type=str, default='data/probes_for_test',
@@ -376,7 +376,7 @@ def main():
     args = parser.parse_args()
     
     print("="*60)
-    print("THERMAL BIOMETRIC SYSTEM EVALUATION")
+    print("FACEGUARD SYSTEM EVALUATION")
     print("="*60)
     
     # Compute verification metrics

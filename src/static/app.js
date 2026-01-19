@@ -1586,7 +1586,7 @@ function exportMetrics() {
             eer: document.getElementById('kpi-eer').textContent
         },
         timestamp: new Date().toISOString(),
-        system: 'Thermal Biometric System'
+        system: 'FaceGuard System'
     };
     
     // Create and download JSON file

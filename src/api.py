@@ -1,5 +1,5 @@
 """
-RESTful API for Thermal Biometric System
+RESTful API for FaceGuard System
 Provides endpoints for face identification, verification, and anti-spoofing
 with automatic Swagger/OpenAPI documentation
 """
@@ -18,8 +18,8 @@ import shutil
 
 # Import backend functions
 from config import IDENTIFICATION_THRESHOLD, VERIFICATION_THRESHOLD, GALLERY_PATH
-from identification import identify_probe_open_set, identify_probe_closed_set, process_probe_image
-from verification import verify_claim, compute_claim_score
+from identification import identify_probe_open_set
+from verification import verify_claim
 from sample_utils import (
     load_gallery, crop_face, face_to_embedding, add_probe_to_gallery,
     remove_identity_from_gallery, get_next_available_class_id
@@ -31,7 +31,7 @@ import pandas as pd
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Thermal Biometric API",
+    title="FaceGuard API",
     description="""
     RESTful API for facial biometric operations including:
     * **Identification (1:N)**: Identify a person from a gallery
@@ -247,7 +247,7 @@ async def root():
         return FileResponse(index_file)
     else:
         return {
-            "message": "Thermal Biometric API",
+            "message": "FaceGuard API",
             "version": "1.0.0",
             "docs": "/docs",
             "redoc": "/redoc",
@@ -258,7 +258,7 @@ async def root():
 async def api_info():
     """API information endpoint"""
     return {
-        "message": "Thermal Biometric API",
+        "message": "FaceGuard API",
         "version": "1.0.0",
         "docs": "/docs",
         "redoc": "/redoc"

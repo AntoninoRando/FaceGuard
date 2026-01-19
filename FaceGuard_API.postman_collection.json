@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "Thermal Biometric API",
+    "name": "FaceGuard API",
     "description": "REST API for face identification, verification, and anti-spoofing",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
