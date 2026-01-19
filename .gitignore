@@ -1,0 +1,37 @@
+.env
+**/.ds_store
+**/.ipynb_checkpoints
+**/__pycache__/
+**/.vscode/
+
+**.mp4
+**.mov
+
+# --- Virtual environments ---
+.venv/
+venv/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.python-version
+
+# --- VSCode ---
+.vscode/
+*.code-workspace
+
+# --- Embeddings and secret files ---
+*.pkl
+*.key
+
+# --- Data ---
+data/
+
+# --- Pictures ---
+*.png
+*.jpg
+*.jpeg
+

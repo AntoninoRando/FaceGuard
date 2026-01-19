@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  thermal-biometric-api:
+    build: .
+    container_name: thermal-biometric-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount data and embeddings for persistence
+      - ./src/data:/app/src/data:ro
+      - ./src/embeddings:/app/src/embeddings
+      - ./src/results:/app/src/results
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add nginx reverse proxy
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: thermal-biometric-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - thermal-biometric-api
+  #   restart: unless-stopped
+
+networks:
+  default:
+    name: thermal-biometric-network

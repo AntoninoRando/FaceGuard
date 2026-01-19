@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Biometric System</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <h1>Thermal Biometric System</h1>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-view="register">
+                    <i class="fas fa-user-plus"></i> Register
+                </button>
+                <button class="nav-btn" data-view="identify">
+                    <i class="fas fa-user-check"></i> Identify
+                </button>
+                <button class="nav-btn" data-view="gallery">
+                    <i class="fas fa-users"></i> Gallery
+                </button>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Registration View -->
+            <div id="register-view" class="view active">
+                <div class="card">
+                    <h2><i class="fas fa-user-plus"></i> Register New User</h2>
+                    <p class="subtitle">Register yourself in the biometric system</p>
+                    
+                    <div class="form-group">
+                        <label for="user-name">Your Name</label>
+                        <input type="text" id="user-name" placeholder="Enter your full name" required>
+                    </div>
+
+                    <div class="camera-section">
+                        <div class="video-container">
+                            <video id="register-video" autoplay playsinline></video>
+                            <canvas id="register-canvas" style="display: none;"></canvas>
+                            <div class="camera-overlay">
+                                <div class="face-guide"></div>
+                            </div>
+                        </div>
+
+                        <div class="camera-controls">
+                            <button id="start-register-camera" class="btn btn-primary">
+                                <i class="fas fa-camera"></i> Start Camera
+                            </button>
+                            <button id="capture-register" class="btn btn-success" style="display: none;">
+                                <i class="fas fa-camera-retro"></i> Capture Photo
+                            </button>
+                            <button id="stop-register-camera" class="btn btn-secondary" style="display: none;">
+                                <i class="fas fa-stop"></i> Stop Camera
+                            </button>
+                        </div>
+
+                        <div id="register-preview" class="preview-section" style="display: none;">
+                            <h3>Captured Photo</h3>
+                            <img id="register-preview-img" alt="Preview">
+                            <div class="preview-actions">
+                                <button id="retake-register" class="btn btn-secondary">
+                                    <i class="fas fa-redo"></i> Retake
+                                </button>
+                                <button id="submit-register" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Register
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="register-result" class="result-box" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Identification View -->
+            <div id="identify-view" class="view">
+                <div class="card">
+                    <h2><i class="fas fa-user-check"></i> Identify Yourself</h2>
+                    <p class="subtitle">Record yourself to verify your identity</p>
+
+                    <div class="camera-section">
+                        <div class="video-container">
+                            <video id="identify-video" autoplay playsinline></video>
+                            <canvas id="identify-canvas" style="display: none;"></canvas>
+                            <div class="camera-overlay">
+                                <div class="face-guide"></div>
+                                <div id="recording-indicator" class="recording-indicator" style="display: none;">
+                                    <i class="fas fa-circle"></i> Recording
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="camera-controls">
+                            <button id="start-identify-camera" class="btn btn-primary">
+                                <i class="fas fa-video"></i> Start Camera
+                            </button>
+                            <button id="start-recording" class="btn btn-danger" style="display: none;">
+                                <i class="fas fa-circle"></i> Start Recording
+                            </button>
+                            <button id="stop-recording" class="btn btn-warning" style="display: none;">
+                                <i class="fas fa-stop"></i> Stop Recording
+                            </button>
+                            <button id="stop-identify-camera" class="btn btn-secondary" style="display: none;">
+                                <i class="fas fa-stop"></i> Stop Camera
+                            </button>
+                        </div>
+
+                        <div id="identify-preview" class="preview-section" style="display: none;">
+                            <h3>Recorded Video</h3>
+                            <video id="identify-preview-video" controls></video>
+                            <div class="preview-actions">
+                                <button id="retake-identify" class="btn btn-secondary">
+                                    <i class="fas fa-redo"></i> Retake
+                                </button>
+                                <button id="submit-identify" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Analyze
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="identify-progress" class="progress-section" style="display: none;">
+                        <h3>Processing...</h3>
+                        <div class="progress-steps">
+                            <div class="step" data-step="antispoofing">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Anti-Spoofing</span>
+                                <div class="step-status"></div>
+                            </div>
+                            <div class="step" data-step="identification">
+                                <i class="fas fa-fingerprint"></i>
+                                <span>Identification</span>
+                                <div class="step-status"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="identify-result" class="result-box" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Gallery View -->
+            <div id="gallery-view" class="view">
+                <div class="card">
+                    <h2><i class="fas fa-users"></i> Registered Users</h2>
+                    <p class="subtitle">View all registered identities</p>
+
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <i class="fas fa-users"></i>
+                            <div class="stat-value" id="total-users">-</div>
+                            <div class="stat-label">Total Users</div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-images"></i>
+                            <div class="stat-value" id="total-samples">-</div>
+                            <div class="stat-label">Total Samples</div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-server"></i>
+                            <div class="stat-value" id="system-status">-</div>
+                            <div class="stat-label">System Status</div>
+                        </div>
+                    </div>
+
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-users" placeholder="Search users...">
+                    </div>
+
+                    <div id="users-list" class="users-list"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p id="loading-text">Processing...</p>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
