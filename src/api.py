@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import tempfile
 import os
+import json
 import numpy as np
 from pathlib import Path as FilePath
 import shutil
@@ -859,7 +860,7 @@ async def get_system_metrics():
 
 def compute_biometric_metrics(gallery_data: Dict) -> Dict[str, Any]:
     """
-    Compute comprehensive biometric metrics
+    Load comprehensive biometric metrics from file
     
     Args:
         gallery_data: Gallery embeddings and labels
@@ -867,220 +868,63 @@ def compute_biometric_metrics(gallery_data: Dict) -> Dict[str, Any]:
     Returns:
         Dictionary containing all computed metrics
     """
-    # For demonstration, we'll compute realistic metrics based on gallery
-    # In production, this would use actual test data
+    metrics_file = FilePath(__file__).parent.parent / 'results' / 'metrics_report.json'
     
-    num_identities = len(np.unique(gallery_data['labels']))
-    num_embeddings = len(gallery_data['embeddings'])
-    
-    # Simulate metrics based on typical biometric system performance
-    # These would normally be computed from actual verification/identification tests
-    
-    # Basic performance metrics
-    accuracy = 0.967
-    far = 0.015
-    frr = 0.018
-    eer = (far + frr) / 2
-    
-    # ROC Curve data
-    roc_data = generate_roc_curve_data()
-    
-    # DET Curve data
-    det_data = generate_det_curve_data(eer)
-    
-    # CMC Curve data
-    cmc_data = generate_cmc_curve_data()
-    
-    # Confusion Matrix
-    confusion_matrix = generate_confusion_matrix(num_embeddings)
-    
-    # Score Distribution
-    score_distribution = generate_score_distribution()
-    
-    # Anti-spoofing data
-    antispoofing_data = generate_antispoofing_data()
-    
-    # Detailed metrics
-    detailed_metrics = [
-        {
-            'name': 'True Acceptance Rate (TAR)',
-            'value': f'{(1 - frr) * 100:.2f}%',
-            'description': 'Percentage of genuine attempts correctly accepted'
-        },
-        {
-            'name': 'True Rejection Rate (TRR)',
-            'value': f'{(1 - far) * 100:.2f}%',
-            'description': 'Percentage of impostor attempts correctly rejected'
-        },
-        {
-            'name': 'False Acceptance Rate (FAR)',
-            'value': f'{far * 100:.2f}%',
-            'description': 'Percentage of impostor attempts incorrectly accepted'
-        },
-        {
-            'name': 'False Rejection Rate (FRR)',
-            'value': f'{frr * 100:.2f}%',
-            'description': 'Percentage of genuine attempts incorrectly rejected'
-        },
-        {
-            'name': 'Equal Error Rate (EER)',
-            'value': f'{eer * 100:.2f}%',
-            'description': 'Point where FAR equals FRR'
-        },
-        {
-            'name': 'Precision',
-            'value': '98.38%',
-            'description': 'Proportion of positive identifications that were correct'
-        },
-        {
-            'name': 'Recall (Sensitivity)',
-            'value': '96.97%',
-            'description': 'Proportion of actual positives correctly identified'
-        },
-        {
-            'name': 'F1-Score',
-            'value': '97.67%',
-            'description': 'Harmonic mean of precision and recall'
-        },
-        {
-            'name': 'Specificity',
-            'value': '98.42%',
-            'description': 'Proportion of actual negatives correctly identified'
-        },
-        {
-            'name': 'Gallery Size',
-            'value': str(num_identities),
-            'description': 'Number of registered identities'
-        },
-        {
-            'name': 'Total Embeddings',
-            'value': str(num_embeddings),
-            'description': 'Total number of embeddings in gallery'
-        },
-        {
-            'name': 'Anti-Spoofing Accuracy',
-            'value': '94.30%',
-            'description': 'Accuracy of liveness detection'
-        }
-    ]
-    
-    return {
-        'accuracy': accuracy,
-        'far': far,
-        'frr': frr,
-        'eer': eer,
-        'roc_data': roc_data,
-        'det_data': det_data,
-        'cmc_data': cmc_data,
-        'confusion_matrix': confusion_matrix,
-        'score_distribution': score_distribution,
-        'antispoofing_data': antispoofing_data,
-        'detailed_metrics': detailed_metrics,
-        'gallery_size': num_identities,
-        'total_embeddings': num_embeddings
-    }
-
-
-def generate_roc_curve_data() -> Dict[str, Any]:
-    """Generate ROC curve data points"""
-    points = []
-    for i in range(101):
-        fpr = i / 100
-        # Realistic ROC curve: tpr = 1 - exp(-k*fpr) * (1-fpr) + noise
-        tpr = 1 - np.exp(-5 * fpr) * (1 - fpr)
-        tpr = min(tpr + np.random.uniform(-0.01, 0.02), 1.0)
-        points.append({'x': float(fpr), 'y': float(max(0, tpr))})
-    
-    # Compute AUC (approximate)
-    auc = np.trapz([p['y'] for p in points], [p['x'] for p in points])
-    
-    return {
-        'points': points,
-        'auc': float(auc)
-    }
-
-
-def generate_det_curve_data(eer: float) -> Dict[str, Any]:
-    """Generate DET curve data points"""
-    points = []
-    
-    # Generate points on log scale
-    for i in np.logspace(-3, 0, 50):
-        far = float(i)
-        # FRR decreases as FAR increases, with some realistic variation
-        frr = float(eer + (0.1 - far) * 0.5 + np.random.uniform(-0.005, 0.005))
-        frr = max(0.001, min(1.0, frr))
-        points.append({'x': far, 'y': frr})
-    
-    return {
-        'points': points,
-        'eer': float(eer),
-        'eer_point': {'x': float(eer), 'y': float(eer)}
-    }
-
-
-def generate_cmc_curve_data() -> Dict[str, Any]:
-    """Generate CMC curve data"""
-    ranks = list(range(1, 21))
-    accuracies = []
-    
-    rank1_acc = 0.967
-    for r in ranks:
-        # Accuracy increases with rank, approaching 1.0
-        acc = min(rank1_acc + (1 - rank1_acc) * (1 - np.exp(-r / 3)), 1.0)
-        accuracies.append(float(acc))
-    
-    return {
-        'ranks': ranks,
-        'accuracies': accuracies
-    }
-
-
-def generate_confusion_matrix(total_samples: int) -> Dict[str, int]:
-    """Generate confusion matrix data"""
-    # Realistic distribution
-    tp = int(total_samples * 0.482)
-    tn = int(total_samples * 0.495)
-    fp = int(total_samples * 0.008)
-    fn = total_samples - tp - tn - fp
-    
-    return {
-        'tp': tp,
-        'tn': tn,
-        'fp': fp,
-        'fn': fn
-    }
-
-
-def generate_score_distribution() -> Dict[str, Any]:
-    """Generate score distribution for genuine vs impostor"""
-    bins = [f'{i/20:.2f}' for i in range(21)]
-    
-    genuine = []
-    impostor = []
-    
-    for i in range(21):
-        score = i / 20
-        # Genuine scores clustered around 0.85
-        genuine_val = float(np.exp(-((score - 0.85) ** 2) / 0.02) * 100 + np.random.uniform(0, 10))
-        genuine.append(genuine_val)
+    # Check if metrics file exists
+    if not metrics_file.exists():
+        # Return helpful message about running evaluation
+        num_identities = len(np.unique(gallery_data['labels']))
+        num_embeddings = len(gallery_data['embeddings'])
         
-        # Impostor scores clustered around 0.35
-        impostor_val = float(np.exp(-((score - 0.35) ** 2) / 0.03) * 80 + np.random.uniform(0, 8))
-        impostor.append(impostor_val)
+        return {
+            'error': 'Metrics not computed yet',
+            'message': 'Please run evaluation first: python src/evaluate_metrics.py',
+            'gallery_size': num_identities,
+            'total_embeddings': num_embeddings,
+            'detailed_metrics': [
+                {
+                    'name': 'Gallery Size',
+                    'value': str(num_identities),
+                    'description': 'Number of registered identities'
+                },
+                {
+                    'name': 'Total Embeddings',
+                    'value': str(num_embeddings),
+                    'description': 'Total number of embeddings in gallery'
+                },
+                {
+                    'name': 'Status',
+                    'value': 'Awaiting Evaluation',
+                    'description': 'Run evaluate_metrics.py to generate real metrics'
+                }
+            ]
+        }
     
-    # Compute separation metric (d-prime)
-    genuine_mean = 0.85
-    impostor_mean = 0.35
-    pooled_std = 0.15
-    separation = abs(genuine_mean - impostor_mean) / pooled_std
+    # Load metrics from file
+    try:
+        with open(metrics_file, 'r') as f:
+            metrics = json.load(f)
+        
+        # Add anti-spoofing data placeholder (if not in metrics)
+        if 'antispoofing_data' not in metrics:
+            metrics['antispoofing_data'] = generate_antispoofing_data()
+        
+        return metrics
     
-    return {
-        'bins': bins,
-        'genuine': genuine,
-        'impostor': impostor,
-        'separation': float(separation)
-    }
+    except Exception as e:
+        # Fallback if file is corrupted
+        num_identities = len(np.unique(gallery_data['labels']))
+        num_embeddings = len(gallery_data['embeddings'])
+        
+        return {
+            'error': f'Failed to load metrics: {str(e)}',
+            'message': 'Please re-run evaluation: python src/evaluate_metrics.py',
+            'gallery_size': num_identities,
+            'total_embeddings': num_embeddings
+        }
+
+
+
 
 
 def generate_antispoofing_data() -> Dict[str, Any]:

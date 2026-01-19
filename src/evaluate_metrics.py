@@ -316,7 +316,132 @@ def save_metrics_report(
     """Save comprehensive metrics report"""
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     
+    # Compute score distributions
+    genuine_scores = verification_metrics['genuine_scores']
+    impostor_scores = verification_metrics['impostor_scores']
+    
+    # Create histogram bins
+    bins = np.linspace(0, 1, 21)
+    genuine_hist, _ = np.histogram(genuine_scores, bins=bins)
+    impostor_hist, _ = np.histogram(impostor_scores, bins=bins)
+    
+    # Compute separation (d-prime)
+    genuine_mean = np.mean(genuine_scores)
+    impostor_mean = np.mean(impostor_scores)
+    pooled_std = np.sqrt((np.std(genuine_scores)**2 + np.std(impostor_scores)**2) / 2)
+    separation = abs(genuine_mean - impostor_mean) / pooled_std if pooled_std > 0 else 0
+    
+    # Compute detailed metrics
+    tp = identification_metrics['tp']
+    fp = identification_metrics['fp']
+    tn = identification_metrics['tn']
+    fn = identification_metrics['fn']
+    total = tp + fp + tn + fn
+    
+    tar = 1 - verification_metrics['frr'][len(verification_metrics['frr'])//2]  # TAR at mid-point
+    far = verification_metrics['far'][len(verification_metrics['far'])//2]
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+    
+    # Build ROC data points
+    roc_points = [{'x': float(f), 'y': float(t)} 
+                  for f, t in zip(verification_metrics['far'], verification_metrics['tar'])]
+    
+    # Build DET data points
+    det_points = [{'x': float(f), 'y': float(r)} 
+                  for f, r in zip(verification_metrics['far'], verification_metrics['frr'])]
+    
     report = {
+        'accuracy': identification_metrics['accuracy'],
+        'far': far,
+        'frr': verification_metrics['frr'][len(verification_metrics['frr'])//2],
+        'eer': verification_metrics['eer'],
+        'roc_data': {
+            'points': roc_points,
+            'auc': float(verification_metrics['auc'])
+        },
+        'det_data': {
+            'points': det_points,
+            'eer': float(verification_metrics['eer']),
+            'eer_point': {'x': float(verification_metrics['eer']), 'y': float(verification_metrics['eer'])}
+        },
+        'cmc_data': {
+            'ranks': identification_metrics['ranks'],
+            'accuracies': [float(x) for x in identification_metrics['cmc']]
+        },
+        'confusion_matrix': {
+            'tp': int(tp),
+            'tn': int(tn),
+            'fp': int(fp),
+            'fn': int(fn)
+        },
+        'score_distribution': {
+            'bins': [f'{b:.2f}' for b in bins[:-1]],
+            'genuine': [float(x) for x in genuine_hist],
+            'impostor': [float(x) for x in impostor_hist],
+            'separation': float(separation)
+        },
+        'detailed_metrics': [
+            {
+                'name': 'True Acceptance Rate (TAR)',
+                'value': f'{tar * 100:.2f}%',
+                'description': 'Percentage of genuine attempts correctly accepted'
+            },
+            {
+                'name': 'True Rejection Rate (TRR)',
+                'value': f'{(1 - far) * 100:.2f}%',
+                'description': 'Percentage of impostor attempts correctly rejected'
+            },
+            {
+                'name': 'False Acceptance Rate (FAR)',
+                'value': f'{far * 100:.2f}%',
+                'description': 'Percentage of impostor attempts incorrectly accepted'
+            },
+            {
+                'name': 'False Rejection Rate (FRR)',
+                'value': f'{verification_metrics["frr"][len(verification_metrics["frr"])//2] * 100:.2f}%',
+                'description': 'Percentage of genuine attempts incorrectly rejected'
+            },
+            {
+                'name': 'Equal Error Rate (EER)',
+                'value': f'{verification_metrics["eer"] * 100:.2f}%',
+                'description': 'Point where FAR equals FRR'
+            },
+            {
+                'name': 'Precision',
+                'value': f'{precision * 100:.2f}%',
+                'description': 'Proportion of positive identifications that were correct'
+            },
+            {
+                'name': 'Recall (Sensitivity)',
+                'value': f'{recall * 100:.2f}%',
+                'description': 'Proportion of actual positives correctly identified'
+            },
+            {
+                'name': 'F1-Score',
+                'value': f'{f1_score * 100:.2f}%',
+                'description': 'Harmonic mean of precision and recall'
+            },
+            {
+                'name': 'Specificity',
+                'value': f'{specificity * 100:.2f}%',
+                'description': 'Proportion of actual negatives correctly identified'
+            },
+            {
+                'name': 'Gallery Size',
+                'value': str(len(set(identification_metrics['results'][0]['true_label'] for r in identification_metrics['results'] if r))),
+                'description': 'Number of registered identities'
+            },
+            {
+                'name': 'Total Probes',
+                'value': str(identification_metrics['total']),
+                'description': 'Total number of test probes evaluated'
+            }
+        ],
+        'gallery_size': len(set(r['true_label'] for r in identification_metrics['results'] if r)),
+        'total_embeddings': identification_metrics['total'],
         'verification': {
             'eer': verification_metrics['eer'],
             'eer_threshold': verification_metrics['eer_threshold'],
