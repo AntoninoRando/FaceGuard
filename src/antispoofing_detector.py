@@ -24,13 +24,25 @@ class AntiSpoofingDetector:
     4. Liveness detection (eye blinking, subtle movements)
     """
     
-    def __init__(self):
+    def __init__(self, config_path: str = None):
         self.face_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
         self.eye_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_eye.xml'
         )
+        
+        # Load configuration
+        if config_path is None:
+            config_path = os.path.join(os.path.dirname(__file__), 'antispoofing_config.json')
+        
+        with open(config_path, 'r') as f:
+            self.config = json.load(f)
+        
+        self.thresholds = self.config['thresholds']
+        self.weights = self.config['weights']
+        self.max_possible_scores = self.config['max_possible_scores']
+        self.classification_config = self.config['classification']
     
     
     def classify_spoof_type(self, features: Dict) -> Tuple[str, float, Dict]:
@@ -62,155 +74,184 @@ class AntiSpoofingDetector:
         
         # ===== REAL FACE SCORING =====
         # Liveness indicators (strongest evidence)
-        if has_blinks and blink_count >= 2:
-            scores['real'] += 35.0
-            weights['strong_blinks'] = 35.0
+        if has_blinks and blink_count >= self.thresholds['blink_count']['multiple_blinks_min']:
+            weight = self.weights['real']['strong_blinks']
+            scores['real'] += weight
+            weights['strong_blinks'] = weight
             reasoning['strong_blinks'] = f'Multiple blinks detected ({blink_count})'
         elif has_blinks:
-            scores['real'] += 20.0
-            weights['blinks'] = 20.0
+            weight = self.weights['real']['blinks']
+            scores['real'] += weight
+            weights['blinks'] = weight
             reasoning['blinks'] = 'Eye blinks detected'
         
         # Natural motion patterns
-        if motion_consistency > 0.5:
-            scores['real'] += 25.0
-            weights['strong_motion'] = 25.0
+        if motion_consistency > self.thresholds['motion_consistency']['strong']:
+            weight = self.weights['real']['strong_motion']
+            scores['real'] += weight
+            weights['strong_motion'] = weight
             reasoning['strong_motion'] = 'Strong natural motion detected'
-        elif motion_consistency > 0.2:
-            scores['real'] += 15.0
-            weights['moderate_motion'] = 15.0
+        elif motion_consistency > self.thresholds['motion_consistency']['moderate']:
+            weight = self.weights['real']['moderate_motion']
+            scores['real'] += weight
+            weights['moderate_motion'] = weight
             reasoning['moderate_motion'] = 'Natural motion present'
-        elif motion_consistency > 0.05:
-            scores['real'] += 8.0
-            weights['slight_motion'] = 8.0
+        elif motion_consistency > self.thresholds['motion_consistency']['slight']:
+            weight = self.weights['real']['slight_motion']
+            scores['real'] += weight
+            weights['slight_motion'] = weight
             reasoning['slight_motion'] = 'Slight motion detected'
         
         # Optical flow indicates actual movement
-        if optical_flow > 1.0:
-            scores['real'] += 10.0
-            weights['optical_flow'] = 10.0
+        if optical_flow > self.thresholds['optical_flow']['continuous_motion_min']:
+            weight = self.weights['real']['optical_flow']
+            scores['real'] += weight
+            weights['optical_flow'] = weight
             reasoning['optical_flow'] = 'Continuous motion detected'
         
         # Natural texture characteristics
-        if 0.001 < texture_variance < 0.01:
-            scores['real'] += 15.0
-            weights['natural_texture'] = 15.0
+        if self.thresholds['texture_variance']['natural_min'] < texture_variance < self.thresholds['texture_variance']['natural_max']:
+            weight = self.weights['real']['natural_texture']
+            scores['real'] += weight
+            weights['natural_texture'] = weight
             reasoning['natural_texture'] = 'Natural skin texture variance'
         
-        if texture_entropy > 5.0:
-            scores['real'] += 10.0
-            weights['texture_complexity'] = 10.0
+        if texture_entropy > self.thresholds['texture_entropy']['natural_min']:
+            weight = self.weights['real']['texture_complexity']
+            scores['real'] += weight
+            weights['texture_complexity'] = weight
             reasoning['texture_complexity'] = 'Complex texture patterns (natural skin)'
         
         # Natural color distribution
-        if color_diversity > 50:
-            scores['real'] += 10.0
-            weights['color_variance'] = 10.0
+        if color_diversity > self.thresholds['color_diversity']['natural_high_min']:
+            weight = self.weights['real']['color_variance_high']
+            scores['real'] += weight
+            weights['color_variance'] = weight
             reasoning['color_variance'] = 'Natural color distribution'
-        elif color_diversity > 30:
-            scores['real'] += 5.0
-            weights['color_variance'] = 5.0
+        elif color_diversity > self.thresholds['color_diversity']['natural_adequate_min']:
+            weight = self.weights['real']['color_variance_adequate']
+            scores['real'] += weight
+            weights['color_variance'] = weight
             reasoning['color_variance'] = 'Adequate color variance'
         
         # Low moiré patterns (no screen)
-        if moire_score < 0.01:
-            scores['real'] += 5.0
-            weights['no_moire'] = 5.0
+        if moire_score < self.thresholds['moire_score']['real_max']:
+            weight = self.weights['real']['no_moire']
+            scores['real'] += weight
+            weights['no_moire'] = weight
             reasoning['no_moire'] = 'No screen artifacts'
         
         # ===== PHOTO ATTACK SCORING =====
         # Static image indicators
-        if motion_consistency < 0.02 and not has_blinks:
-            scores['photo'] += 40.0
-            weights['static_photo'] = 40.0
+        if motion_consistency < self.thresholds['motion_consistency']['static_photo_max'] and not has_blinks:
+            weight = self.weights['photo']['static_photo']
+            scores['photo'] += weight
+            weights['static_photo'] = weight
             reasoning['static_photo'] = 'No motion or blinks detected (static image)'
-        elif motion_consistency < 0.05:
-            scores['photo'] += 25.0
-            weights['minimal_motion'] = 25.0
+        elif motion_consistency < self.thresholds['motion_consistency']['minimal_motion_max']:
+            weight = self.weights['photo']['minimal_motion']
+            scores['photo'] += weight
+            weights['minimal_motion'] = weight
             reasoning['minimal_motion'] = 'Almost no motion detected'
         
         # Low texture complexity (printed)
-        if texture_variance < 0.0003:
-            scores['photo'] += 30.0
-            weights['uniform_texture'] = 30.0
+        if texture_variance < self.thresholds['texture_variance']['photo_uniform_max']:
+            weight = self.weights['photo']['uniform_texture']
+            scores['photo'] += weight
+            weights['uniform_texture'] = weight
             reasoning['uniform_texture'] = 'Extremely uniform texture (printed photo)'
-        elif texture_variance < 0.0008:
-            scores['photo'] += 15.0
-            weights['low_texture'] = 15.0
+        elif texture_variance < self.thresholds['texture_variance']['photo_low_max']:
+            weight = self.weights['photo']['low_texture']
+            scores['photo'] += weight
+            weights['low_texture'] = weight
             reasoning['low_texture'] = 'Low texture variance'
         
         # Low color diversity (printed colors)
-        if color_diversity < 20:
-            scores['photo'] += 15.0
-            weights['poor_colors'] = 15.0
+        if color_diversity < self.thresholds['color_diversity']['photo_poor_max']:
+            weight = self.weights['photo']['poor_colors']
+            scores['photo'] += weight
+            weights['poor_colors'] = weight
             reasoning['poor_colors'] = 'Limited color range (print)'
         
         # Flat texture entropy
-        if texture_entropy < 3.5:
-            scores['photo'] += 10.0
-            weights['flat_texture'] = 10.0
+        if texture_entropy < self.thresholds['texture_entropy']['photo_flat_max']:
+            weight = self.weights['photo']['flat_texture']
+            scores['photo'] += weight
+            weights['flat_texture'] = weight
             reasoning['flat_texture'] = 'Flat texture characteristics'
         
         # ===== VIDEO REPLAY SCORING =====
         # Moiré patterns (screen artifacts)
-        if moire_score > 0.08:
-            scores['video_replay'] += 45.0
-            weights['strong_moire'] = 45.0
+        if moire_score > self.thresholds['moire_score']['video_strong_min']:
+            weight = self.weights['video_replay']['strong_moire']
+            scores['video_replay'] += weight
+            weights['strong_moire'] = weight
             reasoning['strong_moire'] = 'Strong moiré patterns (screen replay)'
-        elif moire_score > 0.04:
-            scores['video_replay'] += 30.0
-            weights['moderate_moire'] = 30.0
+        elif moire_score > self.thresholds['moire_score']['video_moderate_min']:
+            weight = self.weights['video_replay']['moderate_moire']
+            scores['video_replay'] += weight
+            weights['moderate_moire'] = weight
             reasoning['moderate_moire'] = 'Moiré patterns detected'
-        elif moire_score > 0.02:
-            scores['video_replay'] += 15.0
-            weights['slight_moire'] = 15.0
+        elif moire_score > self.thresholds['moire_score']['video_slight_min']:
+            weight = self.weights['video_replay']['slight_moire']
+            scores['video_replay'] += weight
+            weights['slight_moire'] = weight
             reasoning['slight_moire'] = 'Slight screen artifacts'
         
         # Sharp digital edges
-        if high_freq_ratio > 0.25:
-            scores['video_replay'] += 25.0
-            weights['sharp_edges'] = 25.0
+        if high_freq_ratio > self.thresholds['high_freq_ratio']['video_sharp_min']:
+            weight = self.weights['video_replay']['sharp_edges']
+            scores['video_replay'] += weight
+            weights['sharp_edges'] = weight
             reasoning['sharp_edges'] = 'Unnaturally sharp edges (digital)'
-        elif high_freq_ratio > 0.18:
-            scores['video_replay'] += 15.0
-            weights['digital_edges'] = 15.0
+        elif high_freq_ratio > self.thresholds['high_freq_ratio']['video_digital_min']:
+            weight = self.weights['video_replay']['digital_edges']
+            scores['video_replay'] += weight
+            weights['digital_edges'] = weight
             reasoning['digital_edges'] = 'Digital edge characteristics'
         
         # Rigid motion (video playback)
-        if 0.02 < motion_consistency < 0.15 and not has_blinks:
-            scores['video_replay'] += 20.0
-            weights['rigid_motion'] = 20.0
+        if self.thresholds['motion_consistency']['video_rigid_min'] < motion_consistency < self.thresholds['motion_consistency']['video_rigid_max'] and not has_blinks:
+            weight = self.weights['video_replay']['rigid_motion']
+            scores['video_replay'] += weight
+            weights['rigid_motion'] = weight
             reasoning['rigid_motion'] = 'Rigid motion without natural behavior'
+        
+        # Blink detection without natural motion
+        if has_blinks and optical_flow < 0.9:
+            scores['video_replay'] += 15.0
+            reasoning['blinks_without_flow'] = 'Blinks detected but insufficient natural motion'
+        
+        # Detect replay-with-blinks pattern
+        if has_blinks and motion_consistency < 0.2 and optical_flow < 1.0:
+            scores['video_replay'] += 20.0
+            reasoning['replay_with_blinks'] = 'Blinks detected but motion is rigid (replay)'
         
         # ===== MASK ATTACK SCORING =====
         # Artificial material texture
-        if lbp_uniformity < 0.02:
-            scores['mask'] += 30.0
-            weights['uniform_surface'] = 30.0
+        if lbp_uniformity < self.thresholds['lbp_uniformity']['mask_uniform_max']:
+            weight = self.weights['mask']['uniform_surface']
+            scores['mask'] += weight
+            weights['uniform_surface'] = weight
             reasoning['uniform_surface'] = 'Uniform surface texture (mask material)'
         
-        if texture_entropy < 3.0 and color_diversity < 25:
-            scores['mask'] += 25.0
-            weights['artificial_material'] = 25.0
+        if texture_entropy < self.thresholds['texture_entropy']['mask_material_max'] and color_diversity < self.thresholds['color_diversity']['mask_artificial_max']:
+            weight = self.weights['mask']['artificial_material']
+            scores['mask'] += weight
+            weights['artificial_material'] = weight
             reasoning['artificial_material'] = 'Artificial material characteristics'
         
         # Unnatural but present motion (mask worn by person)
-        if motion_consistency > 0.1 and not has_blinks and texture_variance < 0.001:
-            scores['mask'] += 20.0
-            weights['mask_motion'] = 20.0
+        if motion_consistency > self.thresholds['motion_consistency']['mask_motion_min'] and not has_blinks and texture_variance < self.thresholds['texture_variance']['mask_max']:
+            weight = self.weights['mask']['mask_motion']
+            scores['mask'] += weight
+            weights['mask_motion'] = weight
             reasoning['mask_motion'] = 'Motion without natural facial features'
         
         # ===== FINAL CLASSIFICATION =====
         # Normalize scores to 0-100 range
-        max_possible_scores = {
-            'real': 115.0,    # Max possible real score
-            'photo': 115.0,   # Max possible photo score
-            'video_replay': 120.0,  # Max possible video score
-            'mask': 75.0      # Max possible mask score
-        }
-        
         normalized_scores = {
-            k: (v / max_possible_scores[k]) * 100.0 
+            k: (v / self.max_possible_scores[k]) * 100.0 
             for k, v in scores.items()
         }
         
@@ -218,14 +259,18 @@ class AntiSpoofingDetector:
         classification = max(normalized_scores, key=normalized_scores.get)
         confidence = normalized_scores[classification]
         
-        # Apply threshold: need at least 40% confidence to classify as spoof
-        if classification != 'real' and confidence < 40:
+        # Apply threshold: need minimum confidence to classify as spoof
+        min_spoof_conf = self.classification_config['min_spoof_confidence']
+        min_real_fallback = self.classification_config['min_real_fallback_confidence']
+        
+        if classification != 'real' and confidence < min_spoof_conf:
             classification = 'real'
-            confidence = normalized_scores['real'] if normalized_scores['real'] > 30 else 50
+            confidence = normalized_scores['real'] if normalized_scores['real'] > min_real_fallback else 50
             reasoning['default_to_real'] = 'Insufficient evidence for spoofing'
         
         # If real score is high, prefer it
-        if normalized_scores['real'] > 60:
+        prefer_real_thresh = self.classification_config['prefer_real_threshold']
+        if normalized_scores['real'] > prefer_real_thresh:
             classification = 'real'
             confidence = normalized_scores['real']
         
@@ -321,7 +366,7 @@ class AntiSpoofingDetector:
         classification, confidence, reasoning = self.classify_spoof_type(features)
         
         # Calculate spoof score (0 = real, 1 = spoofed)
-        is_live = classification == 'real' and confidence >= 60
+        is_live = classification == 'real'
         spoof_score = 1.0 - (confidence / 100.0) if is_live else (confidence / 100.0)
         
         return {

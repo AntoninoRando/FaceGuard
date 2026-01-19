@@ -11,6 +11,7 @@ pandas
 scipy
 matplotlib
 tqdm
+scikit-learn
 cryptography
 # REST API dependencies
 fastapi>=0.104.0

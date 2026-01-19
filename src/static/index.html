@@ -6,6 +6,7 @@
     <title>Thermal Biometric System</title>
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -24,6 +25,9 @@
                 </button>
                 <button class="nav-btn" data-view="gallery">
                     <i class="fas fa-users"></i> Gallery
+                </button>
+                <button class="nav-btn" data-view="metrics">
+                    <i class="fas fa-chart-line"></i> Metrics
                 </button>
             </nav>
         </header>
@@ -176,6 +180,132 @@
                         <input type="text" id="search-users" placeholder="Search users...">
                     </div>
 
+
+            <!-- Metrics View -->
+            <div id="metrics-view" class="view">
+                <div class="card">
+                    <h2><i class="fas fa-chart-line"></i> System Performance Metrics</h2>
+                    <p class="subtitle">Essential biometric effectiveness indicators</p>
+
+                    <div class="metrics-controls">
+                        <button id="refresh-metrics" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i> Refresh Metrics
+                        </button>
+                        <button id="export-metrics" class="btn btn-secondary">
+                            <i class="fas fa-download"></i> Export Data
+                        </button>
+                    </div>
+
+                    <!-- Key Performance Indicators -->
+                    <div class="kpi-container">
+                        <div class="kpi-card">
+                            <i class="fas fa-check-circle"></i>
+                            <div class="kpi-value" id="kpi-accuracy">-</div>
+                            <div class="kpi-label">Accuracy</div>
+                        </div>
+                        <div class="kpi-card">
+                            <i class="fas fa-user-check"></i>
+                            <div class="kpi-value" id="kpi-far">-</div>
+                            <div class="kpi-label">FAR</div>
+                            <div class="kpi-description">False Acceptance Rate</div>
+                        </div>
+                        <div class="kpi-card">
+                            <i class="fas fa-user-times"></i>
+                            <div class="kpi-value" id="kpi-frr">-</div>
+                            <div class="kpi-label">FRR</div>
+                            <div class="kpi-description">False Rejection Rate</div>
+                        </div>
+                        <div class="kpi-card">
+                            <i class="fas fa-balance-scale"></i>
+                            <div class="kpi-value" id="kpi-eer">-</div>
+                            <div class="kpi-label">EER</div>
+                            <div class="kpi-description">Equal Error Rate</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="charts-grid">
+                        <!-- ROC Curve -->
+                        <div class="chart-card">
+                            <h3><i class="fas fa-chart-area"></i> ROC Curve</h3>
+                            <p class="chart-description">Receiver Operating Characteristic - Trade-off between True Positive Rate and False Positive Rate</p>
+                            <div class="chart-container">
+                                <canvas id="roc-chart"></canvas>
+                            </div>
+                            <div class="chart-info" id="roc-info"></div>
+                        </div>
+
+                        <!-- DET Curve -->
+                        <div class="chart-card">
+                            <h3><i class="fas fa-project-diagram"></i> DET Curve</h3>
+                            <p class="chart-description">Detection Error Tradeoff - FAR vs FRR on logarithmic scale</p>
+                            <div class="chart-container">
+                                <canvas id="det-chart"></canvas>
+                            </div>
+                            <div class="chart-info" id="det-info"></div>
+                        </div>
+
+                        <!-- CMC Curve -->
+                        <div class="chart-card">
+                            <h3><i class="fas fa-layer-group"></i> CMC Curve</h3>
+                            <p class="chart-description">Cumulative Match Characteristic - Identification accuracy vs rank</p>
+                            <div class="chart-container">
+                                <canvas id="cmc-chart"></canvas>
+                            </div>
+                            <div class="chart-info" id="cmc-info"></div>
+                        </div>
+
+                        <!-- Confusion Matrix -->
+                        <div class="chart-card">
+                            <h3><i class="fas fa-th"></i> Confusion Matrix</h3>
+                            <p class="chart-description">Classification performance breakdown</p>
+                            <div class="chart-container">
+                                <canvas id="confusion-matrix-chart"></canvas>
+                            </div>
+                            <div class="chart-info" id="confusion-info"></div>
+                        </div>
+
+                        <!-- Score Distribution -->
+                        <div class="chart-card">
+                            <h3><i class="fas fa-chart-bar"></i> Score Distribution</h3>
+                            <p class="chart-description">Distribution of genuine vs impostor scores</p>
+                            <div class="chart-container">
+                                <canvas id="score-dist-chart"></canvas>
+                            </div>
+                            <div class="chart-info" id="score-info"></div>
+                        </div>
+
+                        <!-- Anti-Spoofing Performance -->
+                        <div class="chart-card">
+                            <h3><i class="fas fa-shield-alt"></i> Anti-Spoofing Performance</h3>
+                            <p class="chart-description">Real vs Spoof detection accuracy</p>
+                            <div class="chart-container">
+                                <canvas id="antispoofing-chart"></canvas>
+                            </div>
+                            <div class="chart-info" id="antispoofing-info"></div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Metrics Table -->
+                    <div class="metrics-table-container">
+                        <h3><i class="fas fa-table"></i> Detailed Metrics</h3>
+                        <table class="metrics-table" id="detailed-metrics-table">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Value</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="metrics-status" class="result-box" style="display: none;"></div>
+                </div>
+            </div>
                     <div id="users-list" class="users-list"></div>
                 </div>
             </div>

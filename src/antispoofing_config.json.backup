@@ -1,0 +1,99 @@
+{
+  "thresholds": {
+    "motion_consistency": {
+      "strong": 0.4,
+      "moderate": 0.2,
+      "slight": 0.05,
+      "static_photo_max": 0.02,
+      "minimal_motion_max": 0.05,
+      "video_rigid_min": 0.02,
+      "video_rigid_max": 0.15,
+      "mask_motion_min": 0.1
+    },
+    "optical_flow": {
+      "continuous_motion_min": 1.0,
+      "suspicious_max": 0.9
+    },
+    "texture_variance": {
+      "natural_min": 0.001,
+      "natural_max": 0.01,
+      "photo_uniform_max": 0.0003,
+      "photo_low_max": 0.0008,
+      "mask_max": 0.001
+    },
+    "texture_entropy": {
+      "natural_min": 5.5,
+      "photo_flat_max": 3.5,
+      "mask_material_max": 3.0
+    },
+    "color_diversity": {
+      "natural_high_min": 50,
+      "natural_adequate_min": 30,
+      "photo_poor_max": 20,
+      "mask_artificial_max": 25
+    },
+    "moire_score": {
+      "real_max": 0.01,
+      "video_strong_min": 0.08,
+      "video_moderate_min": 0.03,
+      "video_slight_min": 0.0015
+    },
+    "high_freq_ratio": {
+      "video_sharp_min": 0.25,
+      "video_digital_min": 0.18
+    },
+    "lbp_uniformity": {
+      "mask_uniform_max": 0.02
+    },
+    "blink_count": {
+      "multiple_blinks_min": 2
+    }
+  },
+  "weights": {
+    "real": {
+      "strong_blinks": 19.46,
+      "blinks": 14.42,
+      "strong_motion": 28.81,
+      "moderate_motion": 15.57,
+      "slight_motion": 7.69,
+      "optical_flow": 7.79,
+      "natural_texture": 14.42,
+      "texture_complexity": 9.6,
+      "color_variance_high": 9.6,
+      "color_variance_adequate": 4.82,
+      "no_moire": 4.82
+    },
+    "photo": {
+      "static_photo": 19.13,
+      "minimal_motion": 10.76,
+      "uniform_texture": 12.91,
+      "low_texture": 7.18,
+      "poor_colors": 7.18,
+      "flat_texture": 4.78
+    },
+    "video_replay": {
+      "strong_moire": 16.61,
+      "moderate_moire": 10.09,
+      "slight_moire": 4.16,
+      "sharp_edges": 6.91,
+      "digital_edges": 4.16,
+      "rigid_motion": 5.54
+    },
+    "mask": {
+      "uniform_surface": 12.91,
+      "artificial_material": 11.96,
+      "mask_motion": 9.57
+    }
+  },
+  "max_possible_scores": {
+    "real": 115.0,
+    "photo": 115.0,
+    "video_replay": 120.0,
+    "mask": 75.0
+  },
+  "classification": {
+    "min_spoof_confidence": 40,
+    "prefer_real_threshold": 65,
+    "min_real_fallback_confidence": 30
+  }
+}

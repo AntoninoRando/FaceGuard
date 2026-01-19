@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeRegisterView();
     initializeIdentifyView();
     initializeGalleryView();
+    initializeMetricsView();
     
     // Load gallery on startup
     loadGalleryData();
@@ -62,6 +63,11 @@ function switchView(viewName) {
     // Reload gallery data when switching to gallery view
     if (viewName === 'gallery') {
         loadGalleryData();
+    }
+    
+    // Load metrics when switching to metrics view
+    if (viewName === 'metrics') {
+        loadMetrics();
     }
 }
 
@@ -442,7 +448,7 @@ async function submitIdentification() {
                 <p><strong>Spoof Score:</strong> ${(antispoofingData.spoof_score * 100).toFixed(1)}%</p>
                 <p><strong>Confidence:</strong> ${(antispoofingData.confidence * 100).toFixed(1)}%</p>
                 <p><em>Please use a live face, not a photo or video.</em></p>
-            `);
+            `, antispoofingData);
             return;
         }
         
@@ -520,7 +526,7 @@ async function submitIdentification() {
                 <h4 style="margin-bottom: 0.5rem;">Top Matches:</h4>
                 ${matchesHtml}
             </div>
-        `);
+        `, antispoofingData);
         
         showToast(`Welcome, ${identificationData.predicted_name}!`, 'success');
         
@@ -620,7 +626,7 @@ function updateStepStatus(step, status, message = '') {
     }
 }
 
-function showResult(type, title, content) {
+function showResult(type, title, content, antispoofingData = null) {
     const resultBox = document.getElementById('identify-result');
     resultBox.className = `result-box ${type}`;
     
@@ -631,6 +637,26 @@ function showResult(type, title, content) {
         info: 'fa-info-circle'
     };
     
+    // Add feedback buttons if antispoofing data is provided
+    let feedbackSection = '';
+    if (antispoofingData) {
+        feedbackSection = `
+            <div class="feedback-section" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                <p style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                    Was the liveness detection correct?
+                </p>
+                <div class="feedback-buttons">
+                    <button class="btn btn-success btn-sm" onclick="submitAntispoofingFeedback(true, ${JSON.stringify(antispoofingData).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-check"></i> Yes, Correct
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="openFeedbackDialog(false, ${JSON.stringify(antispoofingData).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-times"></i> No, Incorrect
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
     resultBox.innerHTML = `
         <div class="result-header">
             <i class="fas ${icons[type]}"></i>
@@ -638,6 +664,7 @@ function showResult(type, title, content) {
         </div>
         <div class="result-content">
             ${content}
+            ${feedbackSection}
         </div>
     `;
     
@@ -806,3 +833,736 @@ window.addEventListener('beforeunload', () => {
     stopRegisterCamera();
     stopIdentifyCamera();
 });
+
+// ============================================================================
+// Anti-Spoofing Feedback Functions
+// ============================================================================
+
+async function submitAntispoofingFeedback(isCorrect, antispoofingData) {
+    try {
+        showLoading('Submitting feedback...');
+        
+        const feedbackData = {
+            detection_result: antispoofingData,
+            is_correct: isCorrect,
+            true_label: null  // Only needed if incorrect
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/antispoofing/feedback`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(feedbackData)
+        });
+        
+        const result = await response.json();
+        
+        hideLoading();
+        
+        if (result.success) {
+            showToast('Thank you for your feedback!', 'success');
+            
+            // Hide feedback buttons after submission
+            const feedbackSection = document.querySelector('.feedback-section');
+            if (feedbackSection) {
+                feedbackSection.innerHTML = '<p style="color: var(--success); font-size: 0.9rem;"><i class="fas fa-check"></i> Feedback submitted</p>';
+            }
+        } else {
+            showToast('Failed to submit feedback: ' + result.error, 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Feedback error:', error);
+        showToast('Failed to submit feedback', 'error');
+    }
+}
+
+function openFeedbackDialog(isCorrect, antispoofingData) {
+    const actualLabel = antispoofingData.classification || 'unknown';
+    const options = ['real', 'photo', 'video_replay', 'mask'].filter(opt => opt !== actualLabel);
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'modal-overlay';
+    dialog.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>Correction Needed</h3>
+                <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>The system detected: <strong>${actualLabel}</strong></p>
+                <p>What should it have been?</p>
+                <div class="feedback-options">
+                    ${options.map(opt => `
+                        <button class="btn btn-outline feedback-option-btn" data-label="${opt}">
+                            ${opt === 'real' ? '✅ Real Face' : 
+                              opt === 'photo' ? '📄 Photo' : 
+                              opt === 'video_replay' ? '📺 Video Replay' : 
+                              '🎭 Mask'}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    // Add click handlers to option buttons
+    dialog.querySelectorAll('.feedback-option-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const trueLabel = btn.dataset.label;
+            dialog.remove();
+            
+            try {
+                showLoading('Submitting correction and adjusting system...');
+                
+                const feedbackData = {
+                    detection_result: antispoofingData,
+                    is_correct: false,
+                    true_label: trueLabel
+                };
+                
+                const response = await fetch(`${API_BASE_URL}/antispoofing/feedback`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(feedbackData)
+                });
+                
+                const result = await response.json();
+                
+                hideLoading();
+                
+                if (result.success) {
+                    let message = 'Thank you! System has been adjusted.';
+                    if (result.changes_made && result.changes_made.length > 0) {
+                        message += ` (${result.changes_made.length} parameters updated)`;
+                    }
+                    showToast(message, 'success');
+                    
+                    // Hide feedback buttons after submission
+                    const feedbackSection = document.querySelector('.feedback-section');
+                    if (feedbackSection) {
+                        feedbackSection.innerHTML = '<p style="color: var(--success); font-size: 0.9rem;"><i class="fas fa-check"></i> Feedback submitted and system adjusted</p>';
+                    }
+                } else {
+                    showToast('Failed to submit feedback: ' + result.error, 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                console.error('Feedback error:', error);
+                showToast('Failed to submit feedback', 'error');
+            }
+        });
+    });
+}
+
+// ============================================================================
+// Metrics View
+// ============================================================================
+
+let metricsCharts = {};
+
+function initializeMetricsView() {
+    const refreshBtn = document.getElementById('refresh-metrics');
+    const exportBtn = document.getElementById('export-metrics');
+    
+    refreshBtn.addEventListener('click', loadMetrics);
+    exportBtn.addEventListener('click', exportMetrics);
+}
+
+async function loadMetrics() {
+    showLoading('Loading system metrics...');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/metrics`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayMetrics(data.metrics);
+            showToast('Metrics loaded successfully', 'success');
+        } else {
+            showToast('No metrics data available yet. Please run system evaluation first.', 'warning');
+            displayDemoMetrics();
+        }
+    } catch (error) {
+        console.error('Metrics error:', error);
+        showToast('Using demo metrics data', 'info');
+        displayDemoMetrics();
+    } finally {
+        hideLoading();
+    }
+}
+
+function displayMetrics(metrics) {
+    // Update KPIs
+    document.getElementById('kpi-accuracy').textContent = 
+        (metrics.accuracy * 100).toFixed(2) + '%';
+    document.getElementById('kpi-far').textContent = 
+        (metrics.far * 100).toFixed(2) + '%';
+    document.getElementById('kpi-frr').textContent = 
+        (metrics.frr * 100).toFixed(2) + '%';
+    document.getElementById('kpi-eer').textContent = 
+        (metrics.eer * 100).toFixed(2) + '%';
+    
+    // Create charts
+    createROCChart(metrics.roc_data);
+    createDETChart(metrics.det_data);
+    createCMCChart(metrics.cmc_data);
+    createConfusionMatrix(metrics.confusion_matrix);
+    createScoreDistribution(metrics.score_distribution);
+    createAntiSpoofingChart(metrics.antispoofing_data);
+    
+    // Populate detailed metrics table
+    populateMetricsTable(metrics.detailed_metrics);
+}
+
+function displayDemoMetrics() {
+    // Demo data for demonstration purposes
+    const demoMetrics = {
+        accuracy: 0.967,
+        far: 0.015,
+        frr: 0.018,
+        eer: 0.0165,
+        roc_data: generateDemoROCData(),
+        det_data: generateDemoDETData(),
+        cmc_data: generateDemoCMCData(),
+        confusion_matrix: generateDemoConfusionMatrix(),
+        score_distribution: generateDemoScoreDistribution(),
+        antispoofing_data: generateDemoAntiSpoofingData(),
+        detailed_metrics: generateDemoDetailedMetrics()
+    };
+    
+    displayMetrics(demoMetrics);
+}
+
+// Chart creation functions
+function createROCChart(data) {
+    const ctx = document.getElementById('roc-chart').getContext('2d');
+    
+    // Destroy existing chart if any
+    if (metricsCharts.roc) {
+        metricsCharts.roc.destroy();
+    }
+    
+    metricsCharts.roc = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'ROC Curve',
+                data: data.points,
+                borderColor: 'rgb(79, 70, 229)',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                borderWidth: 3
+            }, {
+                label: 'Random Classifier',
+                data: [{x: 0, y: 0}, {x: 1, y: 1}],
+                borderColor: 'rgb(107, 114, 128)',
+                borderDash: [5, 5],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                title: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `TPR: ${context.parsed.y.toFixed(3)}, FPR: ${context.parsed.x.toFixed(3)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    title: {
+                        display: true,
+                        text: 'False Positive Rate (FAR)'
+                    },
+                    min: 0,
+                    max: 1
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'True Positive Rate (1 - FRR)'
+                    },
+                    min: 0,
+                    max: 1
+                }
+            }
+        }
+    });
+    
+    // Update info
+    document.getElementById('roc-info').innerHTML = 
+        `<strong>AUC:</strong> ${data.auc.toFixed(4)} | <strong>Interpretation:</strong> ${getAUCInterpretation(data.auc)}`;
+}
+
+function createDETChart(data) {
+    const ctx = document.getElementById('det-chart').getContext('2d');
+    
+    if (metricsCharts.det) {
+        metricsCharts.det.destroy();
+    }
+    
+    metricsCharts.det = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'DET Curve',
+                data: data.points,
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+                borderWidth: 3
+            }, {
+                label: 'EER Point',
+                data: [data.eer_point],
+                borderColor: 'rgb(16, 185, 129)',
+                backgroundColor: 'rgb(16, 185, 129)',
+                pointRadius: 8,
+                pointStyle: 'star',
+                showLine: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `FRR: ${context.parsed.y.toFixed(3)}, FAR: ${context.parsed.x.toFixed(3)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'logarithmic',
+                    title: {
+                        display: true,
+                        text: 'False Acceptance Rate (FAR) - Log Scale'
+                    }
+                },
+                y: {
+                    type: 'logarithmic',
+                    title: {
+                        display: true,
+                        text: 'False Rejection Rate (FRR) - Log Scale'
+                    }
+                }
+            }
+        }
+    });
+    
+    document.getElementById('det-info').innerHTML = 
+        `<strong>EER:</strong> ${(data.eer * 100).toFixed(2)}% | Lower EER indicates better performance`;
+}
+
+function createCMCChart(data) {
+    const ctx = document.getElementById('cmc-chart').getContext('2d');
+    
+    if (metricsCharts.cmc) {
+        metricsCharts.cmc.destroy();
+    }
+    
+    metricsCharts.cmc = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.ranks,
+            datasets: [{
+                label: 'Cumulative Match Characteristic',
+                data: data.accuracies,
+                borderColor: 'rgb(16, 185, 129)',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 3,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Rank'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Identification Rate'
+                    },
+                    min: 0,
+                    max: 1,
+                    ticks: {
+                        callback: function(value) {
+                            return (value * 100) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    document.getElementById('cmc-info').innerHTML = 
+        `<strong>Rank-1:</strong> ${(data.accuracies[0] * 100).toFixed(2)}% | <strong>Rank-5:</strong> ${(data.accuracies[4] * 100).toFixed(2)}%`;
+}
+
+function createConfusionMatrix(data) {
+    const ctx = document.getElementById('confusion-matrix-chart').getContext('2d');
+    
+    if (metricsCharts.confusion) {
+        metricsCharts.confusion.destroy();
+    }
+    
+    const matrixData = [
+        {x: 'Genuine', y: 'Predicted Genuine', v: data.tp},
+        {x: 'Genuine', y: 'Predicted Impostor', v: data.fn},
+        {x: 'Impostor', y: 'Predicted Genuine', v: data.fp},
+        {x: 'Impostor', y: 'Predicted Impostor', v: data.tn}
+    ];
+    
+    metricsCharts.confusion = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['True Positive', 'False Negative', 'False Positive', 'True Negative'],
+            datasets: [{
+                label: 'Count',
+                data: [data.tp, data.fn, data.fp, data.tn],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.7)',
+                    'rgba(239, 68, 68, 0.7)',
+                    'rgba(245, 158, 11, 0.7)',
+                    'rgba(79, 70, 229, 0.7)'
+                ],
+                borderColor: [
+                    'rgb(16, 185, 129)',
+                    'rgb(239, 68, 68)',
+                    'rgb(245, 158, 11)',
+                    'rgb(79, 70, 229)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Count'
+                    }
+                }
+            }
+        }
+    });
+    
+    const total = data.tp + data.tn + data.fp + data.fn;
+    const accuracy = ((data.tp + data.tn) / total * 100).toFixed(2);
+    document.getElementById('confusion-info').innerHTML = 
+        `<strong>Total:</strong> ${total} samples | <strong>Accuracy:</strong> ${accuracy}%`;
+}
+
+function createScoreDistribution(data) {
+    const ctx = document.getElementById('score-dist-chart').getContext('2d');
+    
+    if (metricsCharts.scoreDist) {
+        metricsCharts.scoreDist.destroy();
+    }
+    
+    metricsCharts.scoreDist = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.bins,
+            datasets: [{
+                label: 'Genuine Scores',
+                data: data.genuine,
+                backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                borderColor: 'rgb(16, 185, 129)',
+                borderWidth: 1
+            }, {
+                label: 'Impostor Scores',
+                data: data.impostor,
+                backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                borderColor: 'rgb(239, 68, 68)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Similarity Score'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Frequency'
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    document.getElementById('score-info').innerHTML = 
+        `<strong>Separation:</strong> ${data.separation.toFixed(3)} | Better separation indicates clearer distinction between genuine and impostor`;
+}
+
+function createAntiSpoofingChart(data) {
+    const ctx = document.getElementById('antispoofing-chart').getContext('2d');
+    
+    if (metricsCharts.antispoofing) {
+        metricsCharts.antispoofing.destroy();
+    }
+    
+    metricsCharts.antispoofing = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Correctly Classified Live', 'Correctly Classified Spoof', 'Misclassified'],
+            datasets: [{
+                data: [data.live_correct, data.spoof_correct, data.misclassified],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(79, 70, 229, 0.8)',
+                    'rgba(239, 68, 68, 0.8)'
+                ],
+                borderColor: [
+                    'rgb(16, 185, 129)',
+                    'rgb(79, 70, 229)',
+                    'rgb(239, 68, 68)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return `${context.label}: ${context.parsed} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    document.getElementById('antispoofing-info').innerHTML = 
+        `<strong>Accuracy:</strong> ${(data.accuracy * 100).toFixed(2)}% | <strong>APCER:</strong> ${(data.apcer * 100).toFixed(2)}% | <strong>BPCER:</strong> ${(data.bpcer * 100).toFixed(2)}%`;
+}
+
+function populateMetricsTable(metrics) {
+    const tbody = document.querySelector('#detailed-metrics-table tbody');
+    tbody.innerHTML = '';
+    
+    metrics.forEach(metric => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${metric.name}</strong></td>
+            <td><span class="metric-value">${metric.value}</span></td>
+            <td>${metric.description}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Demo data generators
+function generateDemoROCData() {
+    const points = [];
+    for (let i = 0; i <= 100; i++) {
+        const fpr = i / 100;
+        const tpr = 1 - Math.exp(-5 * fpr) * (1 - fpr);
+        points.push({x: fpr, y: Math.min(tpr + Math.random() * 0.02, 1)});
+    }
+    return {
+        points: points,
+        auc: 0.987
+    };
+}
+
+function generateDemoDETData() {
+    const points = [];
+    const eerPoint = {x: 0.0165, y: 0.0165};
+    
+    for (let i = -3; i <= 0; i += 0.1) {
+        const far = Math.pow(10, i);
+        const frr = far * (1 + Math.random() * 0.2);
+        points.push({x: far, y: frr});
+    }
+    
+    return {
+        points: points,
+        eer: 0.0165,
+        eer_point: eerPoint
+    };
+}
+
+function generateDemoCMCData() {
+    const ranks = Array.from({length: 20}, (_, i) => i + 1);
+    const accuracies = ranks.map(r => {
+        return Math.min(0.967 + (1 - 0.967) * (1 - Math.exp(-r / 3)), 1);
+    });
+    
+    return {
+        ranks: ranks,
+        accuracies: accuracies
+    };
+}
+
+function generateDemoConfusionMatrix() {
+    return {
+        tp: 482,
+        tn: 495,
+        fp: 8,
+        fn: 15
+    };
+}
+
+function generateDemoScoreDistribution() {
+    const bins = [];
+    const genuine = [];
+    const impostor = [];
+    
+    for (let i = 0; i <= 20; i++) {
+        const score = i / 20;
+        bins.push(score.toFixed(2));
+        
+        // Genuine scores (higher similarity)
+        const genuineVal = Math.exp(-Math.pow(score - 0.85, 2) / 0.02) * 100;
+        genuine.push(genuineVal + Math.random() * 10);
+        
+        // Impostor scores (lower similarity)
+        const impostorVal = Math.exp(-Math.pow(score - 0.35, 2) / 0.03) * 80;
+        impostor.push(impostorVal + Math.random() * 8);
+    }
+    
+    return {
+        bins: bins,
+        genuine: genuine,
+        impostor: impostor,
+        separation: 2.847
+    };
+}
+
+function generateDemoAntiSpoofingData() {
+    return {
+        live_correct: 475,
+        spoof_correct: 468,
+        misclassified: 57,
+        accuracy: 0.943,
+        apcer: 0.062,  // Attack Presentation Classification Error Rate
+        bpcer: 0.053   // Bona Fide Presentation Classification Error Rate
+    };
+}
+
+function generateDemoDetailedMetrics() {
+    return [
+        {name: 'True Acceptance Rate (TAR)', value: '96.70%', description: 'Percentage of genuine attempts correctly accepted'},
+        {name: 'True Rejection Rate (TRR)', value: '98.50%', description: 'Percentage of impostor attempts correctly rejected'},
+        {name: 'False Acceptance Rate (FAR)', value: '1.50%', description: 'Percentage of impostor attempts incorrectly accepted'},
+        {name: 'False Rejection Rate (FRR)', value: '1.80%', description: 'Percentage of genuine attempts incorrectly rejected'},
+        {name: 'Equal Error Rate (EER)', value: '1.65%', description: 'Point where FAR equals FRR'},
+        {name: 'Precision', value: '98.38%', description: 'Proportion of positive identifications that were correct'},
+        {name: 'Recall (Sensitivity)', value: '96.97%', description: 'Proportion of actual positives correctly identified'},
+        {name: 'F1-Score', value: '97.67%', description: 'Harmonic mean of precision and recall'},
+        {name: 'Specificity', value: '98.42%', description: 'Proportion of actual negatives correctly identified'},
+        {name: 'Rank-1 Accuracy', value: '96.70%', description: 'Percentage correct on first match'},
+        {name: 'Rank-5 Accuracy', value: '99.20%', description: 'Percentage correct within top 5 matches'},
+        {name: 'Mean Reciprocal Rank', value: '0.9784', description: 'Average of reciprocal ranks'},
+        {name: 'Anti-Spoofing Accuracy', value: '94.30%', description: 'Accuracy of liveness detection'}
+    ];
+}
+
+function exportMetrics() {
+    showToast('Exporting metrics data...', 'info');
+    
+    // Collect all metrics data
+    const metricsData = {
+        kpis: {
+            accuracy: document.getElementById('kpi-accuracy').textContent,
+            far: document.getElementById('kpi-far').textContent,
+            frr: document.getElementById('kpi-frr').textContent,
+            eer: document.getElementById('kpi-eer').textContent
+        },
+        timestamp: new Date().toISOString(),
+        system: 'Thermal Biometric System'
+    };
+    
+    // Create and download JSON file
+    const dataStr = JSON.stringify(metricsData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `biometric_metrics_${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    showToast('Metrics exported successfully', 'success');
+}
+
+function getAUCInterpretation(auc) {
+    if (auc >= 0.9) return 'Excellent discrimination';
+    if (auc >= 0.8) return 'Good discrimination';
+    if (auc >= 0.7) return 'Acceptable discrimination';
+    return 'Poor discrimination';
+}

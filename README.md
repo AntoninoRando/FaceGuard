@@ -20,6 +20,7 @@ Features:
 - 🛡️ **Anti-Spoofing** - Automatic liveness detection
 - 🔍 **Identification** - Real-time face recognition
 - 👥 **Gallery View** - Browse registered users
+- 📊 **Performance Metrics** - Comprehensive biometric effectiveness indicators
 
 **[→ Web App Quick Start Guide](WEBAPP_QUICKSTART.md)**
 
@@ -143,6 +144,56 @@ python verification.py
 ```bash
 python antispoofing.py <video_file>
 ```
+
+**Performance Metrics Evaluation:**
+```bash
+python evaluate_metrics.py --gallery_path data/initial_samples --test_path data/probes_for_test
+```
+
+This will generate:
+- ROC Curve (Receiver Operating Characteristic)
+- DET Curve (Detection Error Tradeoff)
+- CMC Curve (Cumulative Match Characteristic)
+- Comprehensive metrics report (JSON)
+
+## 📊 Performance Metrics
+
+The system provides comprehensive biometric effectiveness evaluation:
+
+### Essential Metrics Displayed:
+- **FAR (False Acceptance Rate)** - Rate of incorrectly accepting impostors
+- **FRR (False Rejection Rate)** - Rate of incorrectly rejecting genuine users
+- **EER (Equal Error Rate)** - Operating point where FAR = FRR
+- **Accuracy** - Overall correctness of the system
+- **Precision & Recall** - Classification performance indicators
+- **ROC Curve** - True Positive Rate vs False Positive Rate
+- **DET Curve** - FAR vs FRR tradeoff visualization
+- **CMC Curve** - Identification rate at different ranks
+- **Confusion Matrix** - Classification breakdown
+- **Score Distribution** - Genuine vs impostor score separation
+- **Anti-Spoofing Performance** - Liveness detection accuracy
+
+### Accessing Metrics:
+
+**Web Interface:**
+Navigate to the "Metrics" tab in the web application at http://localhost:8000
+
+**Command Line Evaluation:**
+```bash
+python evaluate_metrics.py
+```
+
+**API Endpoint:**
+```bash
+curl http://localhost:8000/metrics
+```
+
+The metrics help you understand:
+- System reliability and accuracy
+- Trade-offs between security (FAR) and usability (FRR)
+- Optimal operating thresholds
+- Performance across different ranks (identification)
+- Anti-spoofing effectiveness
 
 ### GUI Application
 Launch the interactive interface:
