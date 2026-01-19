@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  faceguard-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: faceguard-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount data directories for persistence
+      - ./src/data:/app/data
+      - ./src/embeddings:/app/embeddings
+      - ./src/models:/app/models
+      # Mount configuration files
+      - ./src/antispoofing_config.json:/app/antispoofing_config.json
+      - ./src/antispoofing_feedback.json:/app/antispoofing_feedback.json
+      # Optional: mount source for development (uncomment for hot-reload)
+      # - ./src:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - faceguard-network
+
+networks:
+  faceguard-network:
+    driver: bridge

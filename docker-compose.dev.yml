@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  faceguard-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: faceguard-backend-dev
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount entire source for hot-reload development
+      - ./src:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENV=development
+    command: python api.py
+    restart: unless-stopped
+    networks:
+      - faceguard-network
+
+networks:
+  faceguard-network:
+    driver: bridge
